@@ -1,0 +1,5 @@
+[data-theme=dark] {color:#bebebe;background-color:#222}
+[data-theme=dark] .table{color:#bebebe}
+[data-theme=dark] .table-hover tbody tr:hover{color:#bebebe}
+[data-theme=dark] .list-group-item{color:#bebebe;background-color:#181818;border-color:#404040}
+[data-theme=dark] .custom-select{color:#bebebe;background-color:#171717;border-color:#404040;background-image:url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA0IDUnPjxwYXRoIGZpbGw9JyNmZmZmZmYnIGQ9J00yIDBMMCAyaDR6bTAgNUwwIDNoNHonLz48L3N2Zz4=)}
