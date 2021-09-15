@@ -6,7 +6,7 @@ $(document).ready(function(){
 })
 function initTheme() {
     var lc = localStorage.getItem("darkSwitch")
-    var selected = lc !== null && lc === "dark"
+    var selected = lc === "dark" || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
     darkSwitch.checked = selected;
     apply(selected)
 }
