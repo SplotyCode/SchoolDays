@@ -1,0 +1,96 @@
+<script type="text/javascript" src="https://unpkg.com/ical.js@1.4.0/build/ical.js"></script>
+<script>
+    var statistics =  {
+        hollidays: 0
+    };
+    START_DATE = midNight("2021-09-15")
+    END_DATE = midNight("2022-07-25")
+
+    function eachDay(start, end, callback) {
+        while(start <= end) {
+            callback(start)     
+            var newDate = start.setDate(start.getDate() + 1)
+            start = new Date(newDate)
+        }
+    }
+
+    function renderData() {
+        document.writeln("Insgesamte Tage bis Sommerferien: " + statistics.all + "<br>")
+        document.writeln(" davon Wochenende: " + statistics.weekend + "<br>")
+        document.writeln(" davon Ferien: " + statistics.hollidays + "<br>")
+        document.writeln("Schultage übrig: " + statistics.left + "<br><br><br>")
+
+        document.writeln("Nächste besonderheiten: <br>")
+        statistics.events.forEach(event => {
+            document.writeln(event.name + ": +" + event.length + " (" + event.start.toLocaleDateString("de-DE") + "-" + event.end.toLocaleDateString("de-DE") + ")<br>")
+        })
+
+    }
+
+    function midNight(str) {
+        var date = new Date(str);
+        date.setHours(0, 0, 0, 0)
+        return date;
+    }
+
+    function formatName(name) {
+        //year number
+        name = name.replace(/(2)\d{3}/g, "")
+        //useless words
+        name = name.replace(/hessen/ig, "")
+        //duplicate whitespaces
+        name = name.replace(/\s+/g,' ')
+        return name.trim()
+    }
+
+    function outsideDate(date, start, end) {
+        return date > end || date < start
+    }
+
+    function collectStatistics() {
+        var days = []
+        var allEvents = []
+        eachDay(START_DATE, END_DATE, (day) => days.push(day))
+        statistics.all = days.length
+        days = days.filter(day => day.getDay() % 6)
+        statistics.weekend = statistics.all - days.length
+        Promise.all([
+            fetch('data/ferien_hessen_2021.ics').then(response => response.text()),
+            fetch('data/feiertage_hessen_2021.ics').then(response => response.text()),
+            fetch('data/ferien_hessen_2022.ics').then(response => response.text()),
+            fetch('data/feiertage_hessen_2022.ics').then(response => response.text())
+        ]).then(responses => {
+            responses.forEach(text => {
+                var jcalData = ICAL.parse(text)
+                var comp = new ICAL.Component(jcalData)
+                var events = comp.getAllSubcomponents("vevent")
+                events.forEach(rawEvent => {
+                    var event = new ICAL.Event(rawEvent)
+                    var start = event.startDate.toJSDate()
+                    var end = event.endDate.toJSDate()
+                    console.log(event)
+                    before = days.length
+                    days = days.filter(day => outsideDate(day, start, end))
+                    if (before != days.length) {
+                        duration = before - days.length;
+                        statistics.hollidays += duration
+                        allEvents.push({
+                            name: formatName(event.summary),
+                            start: start,
+                            end: end,
+                            length: duration
+                        })
+                    }
+                })
+            })
+            allEvents.sort((a,b) => {
+                return a.start - b.start
+            })
+            statistics.events = allEvents
+            statistics.left = days.length
+            renderData()
+        })
+    }
+
+    collectStatistics()
+</script>
