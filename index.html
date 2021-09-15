@@ -1,96 +1,94 @@
-<script type="text/javascript" src="https://unpkg.com/ical.js@1.4.0/build/ical.js"></script>
-<script>
-    var statistics =  {
-        hollidays: 0
-    };
-    START_DATE = midNight("2021-09-15")
-    END_DATE = midNight("2022-07-25")
-
-    function eachDay(start, end, callback) {
-        while(start <= end) {
-            callback(start)     
-            var newDate = start.setDate(start.getDate() + 1)
-            start = new Date(newDate)
-        }
-    }
-
-    function renderData() {
-        document.writeln("Insgesamte Tage bis Sommerferien: " + statistics.all + "<br>")
-        document.writeln(" davon Wochenende: " + statistics.weekend + "<br>")
-        document.writeln(" davon Ferien: " + statistics.hollidays + "<br>")
-        document.writeln("Schultage übrig: " + statistics.left + "<br><br><br>")
-
-        document.writeln("Nächste besonderheiten: <br>")
-        statistics.events.forEach(event => {
-            document.writeln(event.name + ": +" + event.length + " (" + event.start.toLocaleDateString("de-DE") + "-" + event.end.toLocaleDateString("de-DE") + ")<br>")
-        })
-
-    }
-
-    function midNight(str) {
-        var date = new Date(str);
-        date.setHours(0, 0, 0, 0)
-        return date;
-    }
-
-    function formatName(name) {
-        //year number
-        name = name.replace(/(2)\d{3}/g, "")
-        //useless words
-        name = name.replace(/hessen/ig, "")
-        //duplicate whitespaces
-        name = name.replace(/\s+/g,' ')
-        return name.trim()
-    }
-
-    function outsideDate(date, start, end) {
-        return date > end || date < start
-    }
-
-    function collectStatistics() {
-        var days = []
-        var allEvents = []
-        eachDay(START_DATE, END_DATE, (day) => days.push(day))
-        statistics.all = days.length
-        days = days.filter(day => day.getDay() % 6)
-        statistics.weekend = statistics.all - days.length
-        Promise.all([
-            fetch('data/ferien_hessen_2021.ics').then(response => response.text()),
-            fetch('data/feiertage_hessen_2021.ics').then(response => response.text()),
-            fetch('data/ferien_hessen_2022.ics').then(response => response.text()),
-            fetch('data/feiertage_hessen_2022.ics').then(response => response.text())
-        ]).then(responses => {
-            responses.forEach(text => {
-                var jcalData = ICAL.parse(text)
-                var comp = new ICAL.Component(jcalData)
-                var events = comp.getAllSubcomponents("vevent")
-                events.forEach(rawEvent => {
-                    var event = new ICAL.Event(rawEvent)
-                    var start = event.startDate.toJSDate()
-                    var end = event.endDate.toJSDate()
-                    console.log(event)
-                    before = days.length
-                    days = days.filter(day => outsideDate(day, start, end))
-                    if (before != days.length) {
-                        duration = before - days.length;
-                        statistics.hollidays += duration
-                        allEvents.push({
-                            name: formatName(event.summary),
-                            start: start,
-                            end: end,
-                            length: duration
-                        })
-                    }
-                })
-            })
-            allEvents.sort((a,b) => {
-                return a.start - b.start
-            })
-            statistics.events = allEvents
-            statistics.left = days.length
-            renderData()
-        })
-    }
-
-    collectStatistics()
-</script>
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    </head>
+    <body class="bg-light">
+        <div class="container">
+            <div class="py-5 text-center">
+              <h2>Schooldays</h2>
+              <p class="lead">Wie lange muss ich noch durchhalten?</p>
+            </div>
+            <div class="row">
+              <div class="col-md-4 order-md-2 mb-4">
+                <h4 class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-muted">Insgesamt</span>
+                  <span class="badge badge-secondary badge-pill" id="days-all">Initializing</span>
+                </h4>
+                <ul class="list-group mb-3">
+                  <li class="list-group-item d-flex justify-content-between lh-condensed">
+                    <div>
+                      <h6 class="my-0">Davon Wochenende</h6>
+                      <small class="text-muted">WE in Ferien mitinbegriffen</small>
+                    </div>
+                    <span class="text-muted" id="days-weekend">Initializing</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between lh-condensed">
+                    <div>
+                      <h6 class="my-0">Davon Frei</h6>
+                      <small class="text-muted">Ohne Wochenende</small>
+                    </div>
+                    <span class="text-muted" id="days-hollidays">Initializing</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>Totale Schultage</span>
+                    <strong id="days-left">Initializing</strong>
+                  </li>
+                </ul>
+              </div>
+              <div class="col-md-8">
+                <h4 class="mb-3">Einstellungen</h4>
+                <form>
+                  <div class="row">
+                    <div class="col-md-5 mb-2">
+                      <label for="state">Bundesland</label>
+                      <select class="custom-select d-block w-100" id="state" required>
+                        <option value="hessen">Hessen</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                      <label for="year">Jahr</label>
+                      <select class="custom-select d-block w-100" id="year" required>
+                        <option>2021/2022</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!--
+                  <hr class="mb-4">
+                  <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="save-info">
+                    <label class="custom-control-label" for="save-info">Save this information for next time</label>
+                  </div>
+                  -->
+                  <hr class="mb-4">
+                </form>
+              </div>
+            </div>
+            <div>
+                <table class="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Noch</th>
+                        <th scope="col">Tage</th>
+                        <th scope="col">Zeitraum</th>
+                      </tr>
+                    </thead>
+                    <tbody id="hollidays">
+                    </tbody>
+                  </table>
+            </div>
+            
+            <footer class="my-5 pt-5 text-muted text-center text-small">
+              <p class="mb-1">&copy; 2021 David Scandurra</p>
+              <ul class="list-inline">
+                <li class="list-inline-item"><a href="https://github.com/Splotycode">GitHub</a></li>
+                <li class="list-inline-item"><a href="https://twitter.com/splotycode">Twitter</a></li>
+              </ul>
+            </footer>
+          </div>
+        <script type="text/javascript" src="https://unpkg.com/ical.js@1.4.0/build/ical.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script type="text/javascript" src="index.js"></script>
+    </body>
+</html>
