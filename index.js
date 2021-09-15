@@ -22,6 +22,7 @@ function renderData() {
     $("#days-weekend").text(statistics.weekend)
     $("#days-hollidays").text(statistics.hollidays)
     $("#days-left").text(statistics.left)
+    $("#total-hours").text(statistics.left * 7)
     var table = $("#hollidays")
     statistics.events.forEach(event => {
         start = formatDate(event.start),
