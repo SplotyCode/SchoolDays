@@ -9,7 +9,7 @@ for i in "${array[@]}"
 do
    :
    echo "$i"
-   file="feiertage_${i}_2022.ics"
+   file="ferien_${i}_2023.ics"
    url="${prefix}${file}${suffix}"
    echo "Downloading ${url}"
    cd data && { curl "$url" -o "$file" -A "Mozilla/5.0 (X11; Linux x86_64; rv:94.0) Gecko/20100101 Firefox/94.0" ; cd -; }
