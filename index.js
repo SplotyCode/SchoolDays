@@ -1,9 +1,8 @@
-var statistics =  {
-    hollidays: 0
-};
+var statistics =  {};
 START_DATE = midNight(new Date())
 END_DATE = midNight("2022-07-25")
 DAY_IN_MILLIS = 1000 * 3600 * 24
+var activeState;
 
 function eachDay(start, end, callback) {
     current  = new Date(start);
@@ -24,6 +23,7 @@ function renderData() {
     $("#days-left").text(statistics.left)
     $("#total-hours").text(statistics.left * 7)
     var table = $("#hollidays")
+    table.empty();
     statistics.events.forEach(event => {
         start = formatDate(event.start),
         end = formatDate(event.end)
@@ -52,7 +52,7 @@ function formatName(name) {
     //year number
     name = name.replace(/(2)\d{3}/g, "")
     //useless words
-    name = name.replace(/hessen/ig, "")
+    name = name.replace(new RegExp(activeState, "ig"), "")
     //duplicate whitespaces
     name = name.replace(/\s+/g,' ')
     return name.trim()
@@ -62,18 +62,20 @@ function outsideDate(date, start, end) {
     return date > end || date < start
 }
 
-function collectStatistics() {
+function collectStatistics(region, year) {
+    activeState = region
     var days = []
     var allEvents = []
     eachDay(START_DATE, END_DATE, (day) => days.push(day))
     statistics.all = days.length
     days = days.filter(day => day.getDay() % 6)
     statistics.weekend = statistics.all - days.length
+    statistics.hollidays = 0
     Promise.all([
-        fetch('data/ferien_hessen_2021.ics').then(response => response.text()),
-        fetch('data/feiertage_hessen_2021.ics').then(response => response.text()),
-        fetch('data/ferien_hessen_2022.ics').then(response => response.text()),
-        fetch('data/feiertage_hessen_2022.ics').then(response => response.text())
+        fetch('data/ferien_' + region + '_' + year[0] + '.ics').then(response => response.text()),
+        fetch('data/feiertage_' + region + '_' + year[0] + '.ics').then(response => response.text()),
+        fetch('data/ferien_' + region + '_' + year[1] + '.ics').then(response => response.text()),
+        fetch('data/feiertage_' + region + '_' + year[1] + '.ics').then(response => response.text())
     ]).then(responses => {
         responses.forEach(text => {
             var jcalData = ICAL.parse(text)
@@ -101,8 +103,13 @@ function collectStatistics() {
         allEvents.sort((a,b) => a.start - b.start)
         statistics.events = allEvents
         statistics.left = days.length
+        console.log("render " + JSON.stringify(statistics))
         renderData()
     })
 }
 
-collectStatistics()
+$('#state').on('change', function() {
+  collectStatistics(this.value, "2021/2022".split("/"))
+});
+
+collectStatistics("hessen", "2021/2022".split("/"))
