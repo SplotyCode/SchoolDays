@@ -17,6 +17,7 @@ function dayDiff(start, end) {
 }
 
 function renderData() {
+    console.log("render " + JSON.stringify(statistics))
     $("#days-all").text(statistics.all)
     $("#days-weekend").text(statistics.weekend)
     $("#days-hollidays").text(statistics.hollidays)
@@ -31,7 +32,7 @@ function renderData() {
         date = start == end ? start : start + "-" + end
         table.append(`<tr>
         <th scope="row">${event.name}</th>
-            <td>${until} Tage</td>
+            <td>${until} (${event.schoolUntil}) Tage</td>
             <td>${event.length}</td>
             <td>${date}</td>
         </tr>`)
@@ -63,6 +64,7 @@ function outsideDate(date, start, end) {
 }
 
 function collectStatistics(region, year) {
+    console.log("collectStatistics: " + region + " " + year)
     activeState = region
     var days = []
     var allEvents = []
@@ -100,16 +102,23 @@ function collectStatistics(region, year) {
                 }
             })
         })
+        allEvents.forEach(event => {
+            event.schoolUntil = days.filter(day => !outsideDate(day, START_DATE, event.start)).length
+        })
         allEvents.sort((a,b) => a.start - b.start)
         statistics.events = allEvents
         statistics.left = days.length
-        console.log("render " + JSON.stringify(statistics))
         renderData()
     })
 }
+$(function() {
+    let stateSelect = $('#state');
+    let yearSelect = $('#year');
 
-$('#state').on('change', function() {
-  collectStatistics(this.value, "2021/2022".split("/"))
+    function updateSelection() {
+        collectStatistics(stateSelect.val(), yearSelect.val().split("/"))
+    }
+    stateSelect.on('change', updateSelection)
+    yearSelect.on('change', updateSelection)
+    updateSelection();
 });
-
-collectStatistics("hessen", "2021/2022".split("/"))
